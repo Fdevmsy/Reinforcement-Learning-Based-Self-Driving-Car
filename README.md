@@ -4,7 +4,7 @@
 
 This project implemented a self-driving car in our simulator using reinforcement learning. The car is able to drive freely and stably in different scenes with or without random barriers. We didn't collect any dataset and train the model ourselves, instead we defined actions and corresponding rewards for the car and let it learn itself from exploring. 
 
-![](2.gif)
+![Demo](https://github.com/Fdevmsy/Reinforcement-Learning-Based-Self-Driving-Car/blob/master/2.GIF)
 
 The simulator is upgrading everyday, more scenes and functions are being added. Locating and navigation will be added soon.  
 
