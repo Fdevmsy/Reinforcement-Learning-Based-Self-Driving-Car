@@ -1,11 +1,17 @@
-# Reinforcement Learning Car
-Shiyu Mou
+# Reinforcement Learning Self-Driving Car
+
+## Introduction
+
+This project implemented a self-driving car in our simulator using reinforcement learning. The car is able to drive freely and stably in different scenes with or without random barriers. We didn't collect any dataset and train the model ourselves, instead we defined actions and corresponding rewards for the car and let it learn itself from exploring. 
+
+![](2.gif)
+
+The simulator is upgrading everyday, more scenes and functions are being added. Locating and navigation will be added soon.  
 
 ![](1.png)
 
 ## Installation
 
-cd /DRL/
 ### Homebrew
 ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ### OpenAI Gym dependencies
@@ -64,31 +70,41 @@ Actions:
 We train the network with these actions. In order to communicate with simulator, we covert them to car's throttle and steering wheel. 
 
 ~~~python
-if action == 1:
-	data = {'user/throttle':'0.8'}
-if action == 2:
-	data = {'user/throttle':'-0.8'} 
-if action == 3:
-	data = {'user/angle':'-8'} 
-if action == 4:
-	data = {'user/angle':'8'} 
-~~~		
+if action == -1 or action == 0:
+	steering_angle_a = 0
+	throttle_a = 0
+	data = {'steering_angle':steering_angle_a.__str__(), 'throttle': throttle_a.__str__()}
+	
+elif action == 1:
+	data = {'throttle':'0.8', 'steering_angle':'0'}
+elif action == 2:
+	data = {'throttle':'-0.8', 'steering_angle':'0'} 
+elif action == 3:
+	data = {'steering_angle':'-15', 'throttle':'0.8'} 
+elif action == 4:
+	data = {'steering_angle':'15', 'throttle':'0.8'} 
 
 Reward: 
 
-~~~python
+reward = speed_vehicle / 10
+reward_bad = -500000
+reward -= abs(dist_path) * 10
+
+###### Q Mark ########## 
 if action_old_index == 1:
-	reward += 10
+	reward += 1
 elif action_old_index == 2:
 	reward -= 5
 elif action_old_index == 3:
 	reward -= 1
 elif action_old_index == 4:
 	reward -= 1
+
 	
 If terminated:
 	reward -= 500
 ~~~
+
 Our goal is to make a self-driving car. But what we want is not only driving without hitting the wall, stable and comfortable are also preferred. So every action like turning and decelerating would get a small minus reward. Accelerate is preferred so we give it +1. Hitting the wall is the top 1 thing to be avoid. So we give it -10.  
 
 State: 
@@ -99,6 +115,18 @@ The state is the current image from front camera and the speed.
 1. Set up simulator 
 2. `python python DRLCar.py`
 
+## Reference 
+
+This project is greatly inspired by MLJejuCamp2017's project: 
+[https://github.com/MLJejuCamp2017/DRL_based_SelfDrivingCarControl](https://github.com/MLJejuCamp2017/DRL_based_SelfDrivingCarControl)
+
+
+## Contact
+
+MakerColider
+
+Shiyu Mou
+shiyumou@usc.edu
 
 
 

@@ -280,7 +280,7 @@ def telemetry(sid, data):
 		Vehicle_z = float(data["collide"])
 
 		# The current image from the camera of the car (front)
-		imgString_front = data["cam/image_array"]
+		imgString_front = data["camforward/image_array"]
 		image_front = Image.open(BytesIO(base64.b64decode(imgString_front)))
 		image_array_front = np.asarray(image_front)
 		# ---------------------- Image transformation ----------------------
@@ -295,7 +295,7 @@ def telemetry(sid, data):
 
 		# ------------------------------------------------------------------
 		# The current image from the camera of the car (rear)
-		imgString_rear = data["cam/image_array"]
+		imgString_rear = data["camback/image_array"]
 		image_rear = Image.open(BytesIO(base64.b64decode(imgString_rear)))
 		image_array_rear = np.asarray(image_rear)
 		# ---------------------- Image transformation ----------------------
@@ -354,8 +354,12 @@ def telemetry(sid, data):
 		# print("mark2")
 		throttle = float(data['user/throttle'])
 		angle = float(data['user/angle'])
+		dist_path = float(data['distance/path'])
+		# dist_path = float(data['distance/path'])
+		print("distance: ", dist_path)
+
 		action_vehicle = 0
-					  
+						
 		if throttle > 0:
 			antion_vehicle = 1.00
 		if throttle < 0: 
@@ -373,7 +377,7 @@ def telemetry(sid, data):
 
 		reward = speed_vehicle / 10
 		reward_bad = -500
-
+		reward -= abs(dist_path) * 10
 	###### Q Mark ########## 
 		if action_old_index == 1:
 			reward += 1
@@ -408,8 +412,9 @@ def telemetry(sid, data):
 		# if abs(Vehicle_z - Vehicle_z_old) > 1 and Vehicle_z_old < 21:
 			print('Terminal!!')
 			terminal = 1
-			send_control(2)
-			print("Going Back")
+
+			# send_control(2)
+			# print("Going Back")
 			# send_control(2)
 
 		if terminal == 1 and step != 1:
@@ -450,20 +455,24 @@ def telemetry(sid, data):
 		# If step is less than Num_start_training, store replay memory
 		if step <= Num_start_training:
 			state = 'Observing'
+			print("observing")
 
 			action = np.zeros([Num_action])
 			action[random.randint(0, Num_action - 1)] = 1.0
 
 		elif step <= Num_start_training + Num_training:
 			state = 'Training'
+			print("training")
 
 			# Get action
 			if random.random() < Epsilon:
+				# print("using random")
 				action = np.zeros([Num_action])
 				action[random.randint(0, Num_action - 1)] = 1.0
 				Action_from = 'Random'
 			else:
 				Q_value = output.eval(feed_dict={x_img: [observation_in_img]})
+				# print("using prediction")
 				action = np.zeros([Num_action])
 				action[np.argmax(Q_value)] = 1
 				Action_from = 'Q_network'
@@ -476,7 +485,7 @@ def telemetry(sid, data):
 			action_batch               = [batch[1] for batch in minibatch]
 			reward_batch               = [batch[2] for batch in minibatch]
 			observation_next_batch_img = [batch[3] for batch in minibatch]
-			terminal_batch 	           = [batch[4] for batch in minibatch]
+			terminal_batch             = [batch[4] for batch in minibatch]
 
 			# Update target network according to the Num_update value
 			if step % Num_update == 0:
@@ -484,26 +493,35 @@ def telemetry(sid, data):
 
 			# Get Target value
 			y_batch = []
+			# print(len(observation_next_batch_img))
+			# print('end')
 			# Q_batch = output_target.eval(feed_dict = {x_img: observation_next_batch_img, x_map: observation_next_batch_map})
-			Q_batch = output_target.eval(feed_dict = {x_img: observation_next_batch_img})
+			try:
+				Q_batch = output_target.eval(feed_dict = {x_img: observation_next_batch_img})
+				# print("got q batch")
 
-			for i in range(len(minibatch)):
-				if terminal_batch[i] == True:
-					y_batch.append(reward_batch[i])
-				else:
-					y_batch.append(reward_batch[i] + Gamma * np.max(Q_batch[i]))
 
-			train_step.run(feed_dict = {action_target: action_batch, y_prediction: y_batch, x_img: observation_batch_img})
+				for i in range(len(minibatch)):
+					if terminal_batch[i] == True:
+						y_batch.append(reward_batch[i])
+					else:
+						y_batch.append(reward_batch[i] + Gamma * np.max(Q_batch[i]))
 
-			# save progress every certain steps
-			if step % Num_step_save == 0:
-				saver.save(sess, 'saved_networks/' + date_time + '/' + algorithm)
-				print('Model is saved!!!')
+				train_step.run(feed_dict = {action_target: action_batch, y_prediction: y_batch, x_img: observation_batch_img})
 
+				# save progress every certain steps
+				if step % Num_step_save == 0:
+					saver.save(sess, 'saved_networks/' + date_time + '/' + algorithm)
+					print('Model is saved!!!')
+			except:
+				# print("error")
+				pass
 		else:
+			print("testing")
 			# Testing code
 			state = 'Testing'
 			Q_value = output.eval(feed_dict={x_img: [observation_in_img]})
+			print(Q_value)
 			action = np.zeros([Num_action])
 			action[np.argmax(Q_value)] = 1
 
@@ -584,7 +602,7 @@ def connect(sid, environ):
 # # Disconnect with Unity
 # @sio.on('disconnect')
 # def disconnect(sid):
-# 	print('Client disconnected')
+#   print('Client disconnected')
 
 # Send control to Unity
 num_connection = 0
@@ -597,13 +615,13 @@ def send_control(action):
 		data = {'steering_angle':steering_angle_a.__str__(), 'throttle': throttle_a.__str__()}
 	
 	# if action == 1:
-	# 	data = {'user/throttle':'0.8'}
+	#   data = {'user/throttle':'0.8'}
 	# if action == 2:
-	# 	data = {'user/throttle':'-0.8'} 
+	#   data = {'user/throttle':'-0.8'} 
 	# if action == 3:
-	# 	data = {'user/angle':'-8'} 
+	#   data = {'user/angle':'-8'} 
 	# if action == 4:
-	# 	data = {'user/angle':'8'} 
+	#   data = {'user/angle':'8'} 
 	elif action == 1:
 		data = {'throttle':'0.8', 'steering_angle':'0'}
 	elif action == 2:
@@ -620,7 +638,7 @@ def send_control(action):
 	sio.emit("steer", data, skip_sid=True)
 
 	# sio.emit("onsteer", data={
-	# 	'action': action.__str__()
+	#   'action': action.__str__()
 		# 'num_connection': num_connection.__str__()
 	
 
